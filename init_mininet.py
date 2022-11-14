@@ -8,7 +8,7 @@ from mininet.cli import CLI
 import time
 import os
 
-N = 4
+N = 6
 DIRPREFIX='~/assignment_2' 
 
 def prefix(address, length):
@@ -54,6 +54,23 @@ def stop_bgpd(r):
     pid = int(f.readline())
     r.cmd('kill {}'.format(pid))
     info('stoped {} bgpd'.format(name))
+
+def start_ripd(r):
+    name = '{}'.format(r)
+    dir='{}/{}/'.format(DIRPREFIX, name)
+    config = dir + 'ripd.conf'
+    zsock  = dir + 'zserv.api'
+    pid    = dir + 'ripd.pid'
+    r.cmd('/usr/lib/quagga/ripd --daemon --config_file {} --pid_file {} --socket {}'.format(config, pid, zsock))
+
+def stop_ripd(r):
+    name = '{}'.format(r)
+    dir='{}/{}/'.format(DIRPREFIX, name)
+    pidfile =  dir + 'ripd.pid'
+    f = open(pidfile)
+    pid = int(f.readline())
+    r.cmd('kill {}'.format(pid))
+    info('stoped {} ripd'.format(name))
 
 class LinuxRouter( Node ):
     "A Node with IP forwarding enabled."
@@ -150,7 +167,6 @@ def run():
     net = Mininet(controller = None, topo=topo )  # controller is used by s1-s3
     net.start()
     info( '*** Routing Table on Router:\n' )
-#    info( net[ 'r1' ].cmd( 'route' ) )
 
     BGPnodelist = []		
     for i in range(1, N+1):
@@ -159,29 +175,29 @@ def run():
         BGPnodelist.append(node)
     print('BGPnodelist:', BGPnodelist)
 
-
-    '''
-    # now we build zebra.conf
-    zconflist = []
-    # Create "zebra.conf" file for each router 
-    for r in BGPnodelist:
-        zconf = create_zebra_conf(r, ndict) 
-        zconflist.append(zconf)
-    '''
-    '''
-    bgpconflist = []    
-    # Create "bgpd.conf" file for each router
-    for r in BGPnodelist:
-        bgpconf = create_bgpd_conf(r, ndict, addrdict, ASdict) 
-        bgpconflist.append(bgpconf)
-    '''
  
     info('starting zebra and bgpd service:\n')
     for r in BGPnodelist:
         start_zebra(r)
         start_bgpd(r)
     
+
+    r1Node = net['r1']
+    r2Node = net['r2']
+    r4Node = net['r4']
+
+
+    info('starting r4 zebra, ripd service:\n')
+    start_zebra(r4Node)
+    start_ripd(r4Node)
     
+    info('starting r2 ripd service:\n')
+    start_ripd(r2Node)
+
+    info('starting r1 ripd service:\n')
+    start_ripd(r1Node)
+    
+
     # print routing table
     for node, type in net.items():
         if isinstance(type, Node):
@@ -191,25 +207,28 @@ def run():
 
     CLI( net )
     #os.system("killall -9 bgpd zebra")
-    # stop and erase .api .pid files
+    # stop and erase .api .pid files    
+
+    info('stoping r4 zebra, ripd service:\n')
+    stop_ripd(r4Node)
+    stop_zebra(r4Node)
+
     
-    
+    info('starting r2 ripd service:\n')
+    stop_ripd(r2Node)
+
+    info('starting r1 ripd service:\n')
+    stop_ripd(r1Node)
 
     for r in BGPnodelist:
         stop_bgpd(r)
         stop_zebra(r)
 
+        
+
+
     net.stop()
-    '''
-    for zconf in zconflist:
-        print('removing file {}'.format(zconf))
-        os.remove(zconf)
-    '''
-    '''
-    for bgpconf in bgpconflist:
-        print('removing file {}'.format(bgpconf))
-        os.remove(bgpconf)
-    '''
+
     os.system('stty erase {}'.format(chr(8)))
 
 if __name__ == '__main__':

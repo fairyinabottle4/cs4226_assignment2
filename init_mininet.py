@@ -175,26 +175,25 @@ def run():
         BGPnodelist.append(node)
     print('BGPnodelist:', BGPnodelist)
 
+    r1Node = net['r1']
+    r2Node = net['r2']
+    r3Node = net['r3']
+    r4Node = net['r4']
+    r5Node = net['r5']
+    r6Node = net['r6']
  
     info('starting zebra and bgpd service:\n')
     for r in BGPnodelist:
-        start_zebra(r)
-        start_bgpd(r)
-    
+        if r == r4Node:
+            start_zebra(r)
+        else:
+            start_zebra(r)
+            start_bgpd(r)
 
-    r1Node = net['r1']
-    r2Node = net['r2']
-    r4Node = net['r4']
-
-
-    info('starting r4 zebra, ripd service:\n')
-    start_zebra(r4Node)
     start_ripd(r4Node)
     
-    info('starting r2 ripd service:\n')
     start_ripd(r2Node)
 
-    info('starting r1 ripd service:\n')
     start_ripd(r1Node)
     
 
@@ -234,7 +233,3 @@ def run():
 if __name__ == '__main__':
     setLogLevel( 'info' )
     run()
-
-
-
-
